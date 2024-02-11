@@ -83,7 +83,8 @@ public enum RV32IM {
     SGTZ(true, REGISTER, REGISTER),
 
     // Custom pseudo instructions
-    SYSCALL(true, IMMEDIATE),
+    SYS(true, IMMEDIATE),
+    NOP(true),
 
     ;
 

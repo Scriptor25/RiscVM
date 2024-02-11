@@ -151,7 +151,7 @@ public class CPU extends VMComponent {
             case SLT, SLTU -> set(o0, get(o1) < get(o2) ? 1 : 0);
             case SLTI, SLTUI -> set(o0, get(o1) < o2 ? 1 : 0);
 
-            case SYSCALL -> syscall(o0);
+            case SYS -> sys(o0);
 
             case NULL -> throw new NullException();
             default -> throw new IllegalStateException("Unexpected value: " + inst);
@@ -184,7 +184,7 @@ public class CPU extends VMComponent {
         mNext = next;
     }
 
-    private void syscall(int func) {
+    private void sys(int func) {
         switch (func) {
             case 0x01 -> System.out.println(getMachine().getMemory().getString(get(A0.ordinal())));
         }

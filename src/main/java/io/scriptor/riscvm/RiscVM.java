@@ -1,5 +1,6 @@
 package io.scriptor.riscvm;
 
+import io.scriptor.riscvm.asm.Assembler;
 import io.scriptor.riscvm.vm.Machine;
 import io.scriptor.riscvm.vm.NullException;
 
@@ -16,7 +17,7 @@ public class RiscVM {
         int ptr = 0;
         mem.setInstruction(0, ADDI, ZERO, ZERO, 0);
         mem.setInstruction(ptr += INST_BYTES, ADDI, A0, A0, 4 * INST_BYTES);
-        mem.setInstruction(ptr += INST_BYTES, SYSCALL, 0x01);
+        mem.setInstruction(ptr += INST_BYTES, SYS, 0x01);
         mem.setInstruction(ptr += INST_BYTES, NULL);
         mem.setString(ptr += INST_BYTES, "Hello World!");
         ptr += 0x30;
@@ -31,5 +32,7 @@ public class RiscVM {
         }
 
         System.out.println(machine);
+
+        new Assembler(ClassLoader.getSystemResourceAsStream("test.s"));
     }
 }
