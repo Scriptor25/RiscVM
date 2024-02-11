@@ -10,6 +10,8 @@ import static io.scriptor.riscvm.vm.SystemBus.*;
 
 public class Memory extends VMComponent {
 
+    private static final int N = 16;
+
     private final ByteBuffer mData;
 
     public Memory(Machine machine, int size) {
@@ -22,25 +24,25 @@ public class Memory extends VMComponent {
         final var builder = new StringBuilder()
                 .append("Size: ").append(ByteUtil.unit(mData.capacity()));
 
-        for (int i = 0; i < mData.capacity(); i += 8) {
+        for (int i = 0; i < mData.capacity(); i += N) {
             builder.append(String.format("%n%08X: ", i));
-            for (int j = 0; j < 8; j++)
+            for (int j = 0; j < N; j++)
                 builder.append(String.format("%02X ", mData.get(i + j)));
 
             builder.append('|');
-            for (int j = 0; j < 8; j++) {
+            for (int j = 0; j < N; j++) {
                 final var c = mData.get(i + j);
                 builder.append(String.format("%c", 0x20 <= c && c <= 0x7E ? c : '.'));
             }
             builder.append('|');
 
             int same = 0;
-            while (checkSegments(i, i + (1 + same) * 8))
+            while (checkSegments(i, i + (1 + same) * N))
                 same++;
 
             if (same > 0) {
-                i += same * 8;
-                builder.append(String.format("%n.%08X", i + 7));
+                i += same * N;
+                builder.append(String.format("%n.%08X", i + N - 1));
             }
         }
 
@@ -72,12 +74,16 @@ public class Memory extends VMComponent {
     }
 
     private boolean checkSegments(int segment0, int segment1) {
-        if (segment0 < 0 || segment1 < 0 || segment0 + 7 >= mData.capacity() || segment1 + 7 >= mData.capacity())
+        if (segment0 < 0 || segment1 < 0 || segment0 + N - 1 >= mData.capacity() || segment1 + N - 1 >= mData.capacity())
             return false;
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < N; i++)
             if (mData.get(segment0 + i) != mData.get(segment1 + i))
                 return false;
         return true;
+    }
+
+    public ByteBuffer getBuffer() {
+        return mData;
     }
 
     public void setByte(int address, byte data) {

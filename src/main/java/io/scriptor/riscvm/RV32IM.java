@@ -36,14 +36,14 @@ public enum RV32IM {
     MV(true, REGISTER, REGISTER),
     LI(true, REGISTER, IMMEDIATE),
     LA(true, REGISTER, IMMEDIATE),
-    LW(false, REGISTER, IMMEDIATE),
-    LH(false, REGISTER, IMMEDIATE),
-    LHU(false, REGISTER, IMMEDIATE),
-    LB(false, REGISTER, IMMEDIATE),
-    LBU(false, REGISTER, IMMEDIATE),
-    SW(false, REGISTER, IMMEDIATE),
-    SH(false, REGISTER, IMMEDIATE),
-    SB(false, REGISTER, IMMEDIATE),
+    LW(false, REGISTER, REGISTER),
+    LH(false, REGISTER, REGISTER),
+    LHU(false, REGISTER, REGISTER),
+    LB(false, REGISTER, REGISTER),
+    LBU(false, REGISTER, REGISTER),
+    SW(false, REGISTER, REGISTER),
+    SH(false, REGISTER, REGISTER),
+    SB(false, REGISTER, REGISTER),
     // TODO: l{w|h|hu|b|bu} rd, lab   For each one of the lw, lh, lhu, lb, and lbu machine instructions there is a pseudo-instruction that performs the same operation, but the memory address is calculated based on a label (lab)(pseudo-instruction).
     // TODO: s{w|h|b} rd, lab         For each one of the sw, sh, and sb machine instructions there is a pseudo-instruction that performs the same operation, but the memory address is calculated based on a label (lab)(pseudo-instruction).
 
@@ -76,24 +76,51 @@ public enum RV32IM {
     SLT(false, REGISTER, REGISTER, REGISTER),
     SLTI(false, REGISTER, REGISTER, IMMEDIATE),
     SLTU(false, REGISTER, REGISTER, REGISTER),
-    SLTUI(false, REGISTER, REGISTER, IMMEDIATE),
+    SLTIU(false, REGISTER, REGISTER, IMMEDIATE),
     SEQZ(true, REGISTER, REGISTER),
     SNEZ(true, REGISTER, REGISTER),
     SLTZ(true, REGISTER, REGISTER),
     SGTZ(true, REGISTER, REGISTER),
 
-    // Custom pseudo instructions
-    SYS(true, IMMEDIATE),
+    // Custom instructions
+    SYS(false, IMMEDIATE),
     NOP(true),
+    PUSH(true, REGISTER),
+    POP(true, REGISTER),
 
     ;
 
     public static final int INST_SIZE = 4;
-    public static final int INST_BYTES = 16;
+    public static final int BYTES = 16;
 
+    /**
+     * t*: temporary register
+     * <p>
+     * s*: saved register
+     * <p>
+     * a*: function argument
+     */
     public enum RegisterAlias {
+        /**
+         * hardwired zero
+         */
         ZERO,
-        RA, SP, GP, TP,
+        /**
+         * return address
+         */
+        RA,
+        /**
+         * stack pointer
+         */
+        SP,
+        /**
+         * global pointer
+         */
+        GP,
+        /**
+         * thread pointer
+         */
+        TP,
         T0, T1, T2,
         S0, S1,
         A0, A1, A2, A3, A4, A5, A6, A7,

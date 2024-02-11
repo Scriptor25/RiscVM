@@ -2,11 +2,9 @@
 HELLO:  .string "Hello World!"
 TEST:   .string "Hi, my name is Felix Schreiber and I just wrote this!"
 
-.section .stack
-.skip 0x1000 ; 4 KB Stack
-
 .section .text
 START:
-    li a0, HELLO
+    la a0, HELLO
+	li a1, 0
     sys 0x01
-    nop
+	null
