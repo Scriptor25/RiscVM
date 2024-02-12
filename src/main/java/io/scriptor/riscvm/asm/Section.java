@@ -1,8 +1,7 @@
 package io.scriptor.riscvm.asm;
 
-import io.scriptor.riscvm.RV32IM;
-
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,11 +10,12 @@ import java.util.Vector;
 public class Section {
 
     public final String name;
-    public final Map<String, List<Integer>> symbolUsage = new HashMap<>();
-    private final List<Integer> mData = new Vector<>();
+    public final Map<String, List<Integer>> usage = new HashMap<>();
+    private final ByteBuffer mData;
 
-    public Section(String name) {
+    public Section(String name, int size) {
         this.name = name;
+        this.mData = ByteBuffer.allocateDirect(size).order(ByteOrder.nativeOrder());
     }
 
     @Override
@@ -23,37 +23,40 @@ public class Section {
         final var builder = new StringBuilder();
 
         builder.append("---------- Section ----------\n");
-        builder.append(name).append(": ").append(mData.size() * Integer.BYTES).append('\n');
-        for (final var entry : symbolUsage.entrySet())
-            builder.append(entry.getKey()).append(": ").append(entry.getValue()).append('\n');
+        builder.append(name).append(": ").append(counter());
+        for (final var entry : usage.entrySet())
+            builder.append('\n').append(entry.getKey()).append(": ").append(entry.getValue());
 
         return builder.toString();
     }
 
     public int counter() {
-        return mData.size() * Integer.BYTES;
+        return mData.position();
     }
 
     public void put(ByteBuffer buffer) {
-        for (final var i : mData)
-            buffer.putInt(i);
+        mData.limit(mData.position());
+        mData.position(0);
+        while (mData.hasRemaining())
+            buffer.put(mData.get());
     }
 
-    public Section add(int i) {
-        mData.add(i);
+    public Section putInt(int i) {
+        mData.putInt(i);
         return this;
     }
 
-    public Section add(RV32IM i) {
-        return add(i.ordinal());
+    public Section putShort(short s) {
+        mData.putShort(s);
+        return this;
     }
 
-    public Section add(RV32IM.RegisterAlias i) {
-        return add(i.ordinal());
+    public Section putByte(byte b) {
+        mData.put(b);
+        return this;
     }
 
-    public void addUsage(String symbol) {
-        symbolUsage.computeIfAbsent(symbol, key -> new Vector<>()).add(mData.size() * Integer.BYTES);
-        mData.add(0);
+    public void use(String symbol) {
+        usage.computeIfAbsent(symbol, key -> new Vector<>()).add(counter());
     }
 }

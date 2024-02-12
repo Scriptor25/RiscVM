@@ -1,25 +1,18 @@
 package io.scriptor.riscvm.vm;
 
-import io.scriptor.riscvm.RV32IM;
+import io.scriptor.riscvm.ISA;
+import io.scriptor.riscvm.ISA.RegisterAlias;
+import io.scriptor.riscvm.Instruction;
 
-import static io.scriptor.riscvm.RV32IM.INST_SIZE;
-import static io.scriptor.riscvm.RV32IM.RegisterAlias.*;
-import static io.scriptor.riscvm.vm.SystemBus.*;
+import static io.scriptor.riscvm.ISA.RegisterAlias.*;
 
 public class CPU extends VMComponent {
 
     private final int[] mRegisters;
 
-    private int mNanoCounter = -1;
-    private int mProgramCounter = 0;
-    private final int[] mInstructionRegister = new int[INST_SIZE]; // inst o0 o1 o2
-
-    private Runnable mNext;
-    private final int[] mBusBackup = new int[3]; // control, address, data
-
-    public CPU(Machine machine, int registers) {
+    public CPU(Machine machine) {
         super(machine);
-        mRegisters = new int[registers];
+        mRegisters = new int[32];
     }
 
     @Override
@@ -33,182 +26,150 @@ public class CPU extends VMComponent {
         return builder.toString();
     }
 
-    @Override
     public void cycle() {
-        if (mNext != null) {
-            mNext.run();
-            mNext = null;
-            restoreBus();
-            mNanoCounter = -1;
-            return;
-        }
+        final var instruction = getMachine().getMemory().getWord(nextPC());
 
-        if (mNanoCounter < 0) {
-            getMachine().getBus().writeControl(CTRL_MEM_READ_WORD).writeAddress(nextPC());
-            mNanoCounter = 0;
-            return;
-        }
+        final var oc = Instruction.getOpcode(instruction);
+        final var instCode = ISA.values()[oc];
 
-        mInstructionRegister[mNanoCounter++] = getMachine().getBus().readData();
-        if (mNanoCounter >= INST_SIZE) {
-            mNanoCounter = 0;
+        final var inst = switch (instCode.itype) {
+            case R -> Instruction.fromR(instruction);
+            case I -> Instruction.fromI(instruction);
+            case S -> Instruction.fromS(instruction);
+            case U -> Instruction.fromU(instruction);
+            case E -> Instruction.fromE(instruction);
+        };
 
-            final var opcode = mInstructionRegister[0];
-            final var o0 = mInstructionRegister[1];
-            final var o1 = mInstructionRegister[2];
-            final var o2 = mInstructionRegister[3];
+        final var rd = inst.rd;
+        final var rs1 = inst.rs1;
+        final var rs2 = inst.rs2;
+        final var imm = inst.imm;
 
-            final var inst = RV32IM.values()[opcode];
-            switch (inst) {
-                case AND -> set(o0, get(o1) & get(o2));
-                case OR -> set(o0, get(o1) | get(o2));
-                case XOR -> set(o0, get(o1) ^ get(o2));
-                case ANDI -> set(o0, get(o1) & o2);
-                case ORI -> set(o0, get(o1) | o2);
-                case XORI -> set(o0, get(o1) ^ o2);
-                case SLL -> set(o0, get(o1) << get(o2));
-                case SRL -> set(o0, get(o1) >>> get(o2));
-                case SRA -> set(o0, get(o1) >> get(o2));
-                case SLLI -> set(o0, get(o1) << o2);
-                case SRLI -> set(o0, get(o1) >>> o2);
-                case SRAI -> set(o0, get(o1) >> o2);
-                case ADD -> set(o0, get(o1) + get(o2));
-                case SUB -> set(o0, get(o1) - get(o2));
-                case ADDI -> set(o0, get(o1) + o2);
-                case SUBI -> set(o0, get(o1) - o2);
-                case MUL -> set(o0, get(o1) * get(o2));
-                case DIV, DIVU -> set(o0, get(o1) / get(o2));
-                case REM, REMU -> set(o0, get(o1) % get(o2));
+        switch (instCode) {
+            case AND -> set(rd, get(rs1) & get(rs2));
+            case OR -> set(rd, get(rs1) | get(rs2));
+            case XOR -> set(rd, get(rs1) ^ get(rs2));
+            case ANDI -> set(rd, get(rs1) & imm);
+            case ORI -> set(rd, get(rs1) | imm);
+            case XORI -> set(rd, get(rs1) ^ imm);
+            case SLL -> set(rd, get(rs1) << get(rs2));
+            case SRL -> set(rd, get(rs1) >>> get(rs2));
+            case SRA -> set(rd, get(rs1) >> get(rs2));
+            case SLLI -> set(rd, get(rs1) << imm);
+            case SRLI -> set(rd, get(rs1) >>> imm);
+            case SRAI -> set(rd, get(rs1) >> imm);
+            case ADD -> set(rd, get(rs1) + get(rs2));
+            case SUB -> set(rd, get(rs1) - get(rs2));
+            case ADDI -> set(rd, get(rs1) + imm);
+            case SUBI -> set(rd, get(rs1) - imm);
+            case MUL -> set(rd, get(rs1) * get(rs2));
+            case DIV -> set(rd, get(rs1) / get(rs2));
+            case REM -> set(rd, get(rs1) % get(rs2));
 
-                case LW -> {
-                    next(() -> set(o0, getMachine().getBus().readData()));
-                    getMachine().getBus()
-                            .writeControl(CTRL_MEM_READ_WORD)
-                            .writeAddress(get(o1));
-                }
-                case LH, LHU -> {
-                    next(() -> set(o0, getMachine().getBus().readData()));
-                    getMachine().getBus()
-                            .writeControl(CTRL_MEM_READ_HALF)
-                            .writeAddress(get(o1));
-                }
-                case LB, LBU -> {
-                    next(() -> set(o0, getMachine().getBus().readData()));
-                    getMachine().getBus()
-                            .writeControl(CTRL_MEM_READ_BYTE)
-                            .writeAddress(get(o1));
-                }
-                case SW -> {
-                    next(() -> {
-                    });
-                    getMachine().getBus()
-                            .writeControl(CTRL_MEM_WRITE_WORD)
-                            .writeData(get(o0))
-                            .writeAddress(get(o1));
-                }
-                case SH -> {
-                    next(() -> {
-                    });
-                    getMachine().getBus()
-                            .writeControl(CTRL_MEM_WRITE_HALF)
-                            .writeData(get(o0))
-                            .writeAddress(get(o1));
-                }
-                case SB -> {
-                    next(() -> {
-                    });
-                    getMachine().getBus()
-                            .writeControl(CTRL_MEM_WRITE_BYTE)
-                            .writeData(get(o0))
-                            .writeAddress(get(o1));
-                }
+            case LW -> set(rd, getMachine().getMemory().getWord(get(rs1) + imm));
+            case LH -> set(rd, getMachine().getMemory().getHalf(get(rs1) + imm));
+            case LB -> set(rd, getMachine().getMemory().getByte(get(rs1) + imm));
+            case SW -> getMachine().getMemory().setWord(get(rs2) + imm, get(rs1));
+            case SH -> getMachine().getMemory().setHalf(get(rs2) + imm, (short) get(rs1));
+            case SB -> getMachine().getMemory().setByte(get(rs2) + imm, (byte) get(rs1));
 
-                case BEQ -> {
-                    if (get(o0) == get(o1))
-                        mProgramCounter = o2;
-                }
-                case BNE -> {
-                    if (get(o0) != get(o1))
-                        mProgramCounter = o2;
-                }
-                case BLT, BLTU -> {
-                    if (get(o0) < get(o1))
-                        mProgramCounter = o2;
-                }
-                case BGE, BGEU -> {
-                    if (get(o0) >= get(o1))
-                        mProgramCounter = o2;
-                }
-                case JAL -> {
-                    set(o0, mProgramCounter);
-                    mProgramCounter = o1;
-                }
-                case JALR -> {
-                    set(o0, mProgramCounter);
-                    mProgramCounter = o2 + get(o1);
-                }
-
-                case SLT, SLTU -> set(o0, get(o1) < get(o2) ? 1 : 0);
-                case SLTI, SLTIU -> set(o0, get(o1) < o2 ? 1 : 0);
-
-                case SYS -> sys(o0);
-
-                case NULL -> throw new NullException();
-                default -> throw new IllegalStateException("Unexpected value: " + inst);
+            case BEQ -> {
+                if (get(rs1) == get(rs2))
+                    set(PC, imm);
             }
-        }
+            case BNE -> {
+                if (get(rs1) != get(rs2))
+                    set(PC, imm);
+            }
+            case BLT -> {
+                if (get(rs1) < get(rs2))
+                    set(PC, imm);
+            }
+            case BGE -> {
+                if (get(rs1) >= get(rs2))
+                    set(PC, imm);
+            }
+            case JAL -> {
+                set(rd, get(PC));
+                set(PC, imm);
+            }
+            case JALR -> {
+                set(rd, get(PC));
+                set(PC, get(rs1) + imm);
+            }
 
-        if (mNext == null)
-            getMachine().getBus().writeControl(CTRL_MEM_READ_WORD).writeAddress(nextPC());
+            case SLT -> set(rd, get(rs1) < get(rs2) ? 1 : 0);
+            case SLTI -> set(rd, get(rs1) < imm ? 1 : 0);
+
+            case ECALL -> ecall();
+
+            default -> throw new IllegalStateException("Unexpected value: " + inst);
+        }
+    }
+
+    public void set(RegisterAlias a, int word) {
+        if (a == ZERO) return; // Zero hardwired to NULL
+        this.mRegisters[a.ordinal() - 1] = word;
     }
 
     public void set(int i, int word) {
         if (i == 0) return; // Zero hardwired to NULL
-        this.mRegisters[i] = word;
+        this.mRegisters[i - 1] = word;
+    }
+
+    public int get(RegisterAlias a, int offset) {
+        a = RegisterAlias.values()[a.ordinal() + offset];
+        if (a == ZERO) return 0; // Zero hardwired to NULL
+        return this.mRegisters[a.ordinal() - 1];
+    }
+
+    public int get(RegisterAlias a) {
+        if (a == ZERO) return 0; // Zero hardwired to NULL
+        return this.mRegisters[a.ordinal() - 1];
     }
 
     public int get(int i) {
         if (i == 0) return 0; // Zero hardwired to NULL
-        return this.mRegisters[i];
-    }
-
-    private void backupBus() {
-        mBusBackup[0] = getMachine().getBus().readControl();
-        mBusBackup[1] = getMachine().getBus().readAddress();
-        mBusBackup[2] = getMachine().getBus().readData();
-    }
-
-    private void restoreBus() {
-        getMachine().getBus()
-                .writeControl(mBusBackup[0])
-                .writeAddress(mBusBackup[1])
-                .writeData(mBusBackup[2]);
-    }
-
-    private void next(Runnable next) {
-        backupBus();
-        mNext = next;
-    }
-
-    private void sys(int func) {
-        switch (func) {
-            case 0x01 -> {
-                // a0: fmt
-                // a1: argc
-                // a*: argv
-                final var fmt = getMachine().getMemory().getString(get(A0.ordinal()));
-                final var argc = get(A1.ordinal());
-                final var argv = new Object[argc];
-                for (int i = 0; i < argv.length; i++)
-                    argv[i] = get(A2.ordinal() + i);
-                System.out.printf(fmt, argv);
-            }
-        }
+        return this.mRegisters[i - 1];
     }
 
     private int nextPC() {
-        final var pc = mProgramCounter;
-        mProgramCounter += Integer.BYTES;
+        final var pc = get(PC);
+        set(PC, pc + 4);
         return pc;
+    }
+
+    private void ecall() {
+        switch (get(A7)) {
+
+            /*
+              write:
+               a0: fd
+               a1: buf
+               a2: count
+             */
+            case 64 -> {
+                final var fd = get(A0);
+                final var buf = get(A1);
+                final var count = get(A2);
+
+                final var ascii = getMachine().getMemory().getASCII(buf, count);
+
+                switch (fd) {
+                    // std out
+                    case 1 -> System.out.print(ascii);
+                    // std err
+                    case 2 -> System.err.print(ascii);
+                }
+            }
+
+            /*
+             * exit:
+             *  a0: code
+             */
+            case 93 -> {
+                throw new ExitSignal(get(A0));
+            }
+        }
     }
 }

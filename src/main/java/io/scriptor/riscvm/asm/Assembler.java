@@ -1,37 +1,36 @@
 package io.scriptor.riscvm.asm;
 
-import io.scriptor.riscvm.RV32IM;
+import io.scriptor.riscvm.ISA;
+import io.scriptor.riscvm.Instruction;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
-import static io.scriptor.riscvm.ErrorUtil.handle;
-import static io.scriptor.riscvm.ErrorUtil.handleT;
-import static io.scriptor.riscvm.RV32IM.*;
-import static io.scriptor.riscvm.RV32IM.RegisterAlias.*;
+import static io.scriptor.riscvm.ISA.*;
+import static io.scriptor.riscvm.Util.handle;
+import static io.scriptor.riscvm.Util.handleT;
 import static io.scriptor.riscvm.asm.Token.Type.*;
 
 public class Assembler {
 
-    private static boolean isdigit(int c) {
+    private static boolean isDigit(int c) {
         return (0x30 <= c && c <= 0x39);
     }
 
-    private static boolean isxdigit(int c) {
-        return isdigit(c) || (0x41 <= c && c <= 0x46) || (0x61 <= c && c <= 0x66);
+    private static boolean isXDigit(int c) {
+        return isDigit(c) || (0x41 <= c && c <= 0x46) || (0x61 <= c && c <= 0x66);
     }
 
-    private static boolean isalpha(int c) {
+    private static boolean isAlpha(int c) {
         return (0x41 <= c && c <= 0x5A) || (0x61 <= c && c <= 0x7A);
     }
 
-    private static boolean isalnum(int c) {
-        return isdigit(c) || isalpha(c);
+    private static boolean isAlNum(int c) {
+        return isDigit(c) || isAlpha(c);
     }
 
     private final InputStream mStream;
@@ -41,9 +40,11 @@ public class Assembler {
     private final Map<String, Section> mSections = new HashMap<>();
     private final List<Section> mOrder = new Vector<>();
     private String mSelected = "";
+    private final int mMemorySize;
 
-    public Assembler(InputStream stream, ASMConfig config, ByteBuffer buffer) {
+    public Assembler(InputStream stream, LinkerConfig config, ByteBuffer buffer) {
         mStream = stream;
+        mMemorySize = buffer.capacity();
 
         next();
         do {
@@ -51,10 +52,14 @@ public class Assembler {
         } while (notEOF());
         handle(mStream::close);
 
-        for (final var name : config.order()) {
-            final var section = mSections.computeIfAbsent(name, Section::new);
+        for (final var name : config.sections()) {
+            final var section = mSections.computeIfAbsent(name, key -> new Section(key, mMemorySize));
             mOrder.add(section);
         }
+
+        for (final var section : mSections.values())
+            if (!mOrder.contains(section))
+                mOrder.add(section);
 
         for (final var section : mOrder)
             insertSection(buffer, section);
@@ -76,7 +81,7 @@ public class Assembler {
         buffer.position(start);
         section.put(buffer);
 
-        for (final var entry : section.symbolUsage.entrySet()) {
+        for (final var entry : section.usage.entrySet()) {
             final var symbol = entry.getKey();
             final var offsets = entry.getValue();
 
@@ -86,8 +91,26 @@ public class Assembler {
             final var sym = mSymbolTable.get(symbol);
             final var location = sym.offset() + offsetOf(sym.section());
 
-            for (final var o : offsets)
-                buffer.putInt(start + o, location);
+            for (final var o : offsets) {
+                final var inst = buffer.getInt(start + o);
+
+                final var itype = ISA.values()[Instruction.getOpcode(inst)].itype;
+                var i = switch (itype) {
+                    case I -> Instruction.fromI(inst);
+                    case S -> Instruction.fromS(inst);
+                    case U -> Instruction.fromU(inst);
+                    default -> throw new IllegalStateException("Unexpected value: " + itype);
+                };
+
+                i = switch (itype) {
+                    case I -> Instruction.fromI(i.opcode, i.rd, i.rs1, location);
+                    case S -> Instruction.fromS(i.opcode, i.rs1, i.rs2, location);
+                    case U -> Instruction.fromU(i.opcode, i.rd, location);
+                    default -> throw new IllegalStateException("Unexpected value: " + itype);
+                };
+
+                buffer.putInt(start + o, i.pack());
+            }
         }
     }
 
@@ -101,24 +124,34 @@ public class Assembler {
         builder.append("---------- Symbols ----------\n");
         for (final var entry : mSymbolTable.entrySet())
             builder.append(entry.getKey()).append(": ").append(entry.getValue().section().name).append("+").append(String.format("%08X", entry.getValue().offset())).append('\n');
+        builder.append("-----------------------------");
 
         return builder.toString();
     }
 
     private Section section() {
-        return mSections.computeIfAbsent(mSelected, Section::new);
+        return mSections.computeIfAbsent(mSelected, key -> new Section(key, mMemorySize));
     }
 
     private int read() {
         return handleT(mStream::read);
     }
 
-    private void mark(int limit) {
-        mStream.mark(limit);
+    private void mark() {
+        mStream.mark(1);
     }
 
     private void reset() {
         handle(mStream::reset);
+    }
+
+    private int escape(int c) {
+        return switch (c) {
+            case 'n' -> '\n';
+            case 't' -> '\t';
+            case 'r' -> '\r';
+            default -> c;
+        };
     }
 
     private Token next() {
@@ -130,21 +163,10 @@ public class Assembler {
         if (c < 0x00)
             return mToken = new Token();
 
-        if (c == ';') {
+        if (c == '#') {
             while (0x00 <= c && c != '\n')
                 c = read();
             return next();
-        }
-
-        if (c == '"') {
-            final var str = new StringBuilder();
-            while (true) {
-                c = read();
-                if (c < 0x00 || c == '"')
-                    break;
-                str.append((char) c);
-            }
-            return mToken = new Token(STRING, str.toString());
         }
 
         if (c == '.') {
@@ -154,44 +176,75 @@ public class Assembler {
             return mToken = new Token(DIRECTIVE, next.value());
         }
 
+        if (c == '-') {
+            final var next = next();
+            if (next.type() != IMMEDIATE)
+                throw new IllegalStateException();
+            return mToken = new Token(IMMEDIATE, -Integer.parseInt(next.value()));
+        }
+
+        if (c == '"') {
+            final var str = new StringBuilder();
+            while (true) {
+                c = read();
+                if (c < 0x00 || c == '"')
+                    break;
+
+                if (c == '\\')
+                    c = escape(read());
+
+                str.append((char) c);
+            }
+            return mToken = new Token(STRING, str.toString());
+        }
+
+        if (c == '\'') {
+            int chr = read();
+            if (chr == '\\')
+                chr = escape(read());
+            read();
+
+            return mToken = new Token(IMMEDIATE, Integer.toString(chr));
+        }
+
         if (c == '0') {
-            mark(1);
+            mark();
             final var x = read();
             if (x != 'x' && x != 'X')
                 reset();
             else {
                 final var hex = new StringBuilder();
                 while (true) {
-                    mark(1);
+                    mark();
                     c = read();
-                    if (!isxdigit(c))
+                    if (!isXDigit(c))
                         break;
                     hex.append((char) c);
                 }
                 reset();
-                return mToken = new Token(INTEGER, Integer.valueOf(hex.toString(), 16).toString());
+                return mToken = new Token(IMMEDIATE, Integer.valueOf(hex.toString(), 16).toString());
             }
         }
 
-        if (isdigit(c)) {
+        if (isDigit(c)) {
             final var integer = new StringBuilder().append((char) c);
             while (true) {
-                mark(1);
+                mark();
                 c = read();
-                if (!isdigit(c))
+                if (!isDigit(c))
                     break;
                 integer.append((char) c);
             }
             reset();
-            return mToken = new Token(INTEGER, integer.toString());
+            return mToken = new Token(IMMEDIATE, integer.toString());
         }
 
-        if (isalpha(c)) {
+        if (isAlpha(c) || c == '_') {
             final var symbol = new StringBuilder().append((char) c);
             while (true) {
-                mark(1);
+                mark();
                 c = read();
-                if (!isalnum(c))
+                if (!isAlNum(c) && c != '_')
                     break;
                 symbol.append((char) c);
             }
@@ -202,7 +255,7 @@ public class Assembler {
             if (sym.matches("\\b(x(\\d+))\\b"))
                 return mToken = new Token(REGISTER, symbol.substring(1));
 
-            for (final var alias : RV32IM.RegisterAlias.values())
+            for (final var alias : ISA.RegisterAlias.values())
                 if (sym.equalsIgnoreCase(alias.name()))
                     return mToken = new Token(REGISTER, Integer.toString(alias.ordinal()));
 
@@ -272,7 +325,7 @@ public class Assembler {
             }
         }
 
-        if (at(DIRECTIVE)) nextDirective(symbol);
+        if (at(DIRECTIVE)) nextDirective();
         else nextInstruction(expectAndNext(SYMBOL).value());
     }
 
@@ -281,161 +334,168 @@ public class Assembler {
     }
 
     private void nextInstruction(String symbol) {
-        final var instruction = RV32IM.valueOf(symbol.toUpperCase());
+        final var inst = ISA.valueOf(symbol.toUpperCase());
 
-        if (instruction.pseudo) {
-            nextPseudoInstruction(instruction);
+        if (nextPseudoInstruction(inst))
             return;
+
+        final var ops = new Operand[inst.operands.length];
+        for (int i = 0; i < ops.length; i++) {
+            ops[i] = nextOperand(i > 0);
+            if (ops[i] instanceof OpSymbol) {
+                section().use(ops[i].asSym());
+                ops[i] = new OpImmediate(0);
+            }
         }
 
-        section().add(instruction);
-
-        int i = 0;
-        for (; i < instruction.operands.length; i++) nextOperand(i > 0);
-        for (; i < 3; i++) section().add(0);
+        final var instruction = inst.toInstruction(ops);
+        section().putInt(instruction.pack());
     }
 
-    private void nextPseudoInstruction(RV32IM instruction) {
+    private boolean nextPseudoInstruction(ISA instruction) {
         switch (instruction) {
-            case MV -> {
-                section().add(ADDI);
-                nextOperand(false);
-                nextOperand(true);
-                section().add(0);
+            case LI -> {
+                final var rd = nextOperand(false);
+                final var imm = nextOperand(true);
+                section().putInt(ADDI.toInstruction(rd, new OpRegister(RegisterAlias.ZERO), imm).pack());
+                return true;
             }
-            case LI, LA -> {
-                section().add(ADDI);
-                nextOperand(false);
-                section().add(ZERO);
-                nextOperand(true);
+            case LA -> {
+                final var rd = nextOperand(false);
+                final var sym = nextOperand(true);
+                section().use(sym.asSym());
+                section().putInt(ADDI.toInstruction(rd, new OpRegister(RegisterAlias.ZERO), new OpImmediate(0)).pack());
+                return true;
+            }
+            case MV -> {
+                final var rd = nextOperand(false);
+                final var rs1 = nextOperand(true);
+                section().putInt(ADDI.toInstruction(rd, rs1, new OpImmediate(0)).pack());
+                return true;
             }
             case BEQZ -> {
-                section().add(BEQ);
-                nextOperand(false);
-                section().add(ZERO);
-                nextOperand(true);
+                final var rs1 = nextOperand(false);
+                final var sym = nextOperand(true);
+                section().use(sym.asSym());
+                section().putInt(BEQ.toInstruction(rs1, new OpRegister(RegisterAlias.ZERO), new OpImmediate(0)).pack());
+                return true;
             }
             case BNEZ -> {
-                section().add(BNE);
-                nextOperand(false);
-                section().add(ZERO);
-                nextOperand(true);
-            }
-            case J -> {
-                section().add(JAL);
-                section().add(ZERO);
-                nextOperand(false);
-                section().add(0);
+                final var rs1 = nextOperand(false);
+                final var imm = nextOperand(true);
+                section().putInt(BNE.toInstruction(rs1, new OpRegister(RegisterAlias.ZERO), imm).pack());
+                return true;
             }
             case JR -> {
-                section().add(JAL);
-                section().add(RA);
-                nextOperand(false);
-                section().add(0);
+                final var sym = nextOperand(false);
+                section().use(sym.asSym());
+                section().putInt(JAL.toInstruction(new OpRegister(RegisterAlias.RA), new OpImmediate(0)).pack());
+                return true;
+            }
+            case J -> {
+                final var sym = nextOperand(false);
+                section().use(sym.asSym());
+                section().putInt(JAL.toInstruction(new OpRegister(RegisterAlias.ZERO), new OpImmediate(0)).pack());
+                return true;
             }
             case RET -> {
-                section().add(JALR);
-                section().add(ZERO);
-                section().add(RA);
-                section().add(0);
+                section().putInt(JALR.toInstruction(new OpRegister(RegisterAlias.ZERO), new OpRegister(RegisterAlias.RA), new OpImmediate(0)).pack());
+                return true;
             }
             case SEQZ -> {
-                section().add(SLTIU);
-                nextOperand(false);
-                nextOperand(true);
-                section().add(1);
+                throw new IllegalStateException();
             }
             case SNEZ -> {
-                section().add(SLTU);
-                nextOperand(false);
-                section().add(ZERO);
-                nextOperand(true);
+                throw new IllegalStateException();
             }
             case SLTZ -> {
-                section().add(SLT);
-                nextOperand(false);
-                nextOperand(true);
-                section().add(ZERO);
+                throw new IllegalStateException();
             }
             case SGTZ -> {
-                section().add(SLT);
-                nextOperand(false);
-                section().add(ZERO);
-                nextOperand(true);
+                throw new IllegalStateException();
             }
             case NOP -> {
-                section().add(ADDI);
-                section().add(ZERO);
-                section().add(ZERO);
-                section().add(0);
+                section().putInt(ADDI.toInstruction(new OpRegister(RegisterAlias.ZERO), new OpRegister(RegisterAlias.ZERO), new OpImmediate(0)).pack());
+                return true;
             }
             case PUSH -> {
-                section().add(SW);
-                nextOperand(false);
-                section().add(SP);
-                section().add(0);
-
-                section().add(SUBI);
-                section().add(SP);
-                section().add(SP);
-                section().add(4);
+                final var rs1 = nextOperand(false);
+                section().putInt(SW.toInstruction(rs1, new OpRegister(RegisterAlias.SP), new OpImmediate(0)).pack());
+                section().putInt(SUBI.toInstruction(new OpRegister(RegisterAlias.SP), new OpRegister(RegisterAlias.SP), new OpImmediate(4)).pack());
+                return true;
             }
             case POP -> {
-                section().add(ADDI);
-                section().add(SP);
-                section().add(SP);
-                section().add(4);
-
-                section().add(LW);
-                nextOperand(false);
-                section().add(SP);
-                section().add(0);
+                final var rd = nextOperand(false);
+                section().putInt(ADDI.toInstruction(new OpRegister(RegisterAlias.SP), new OpRegister(RegisterAlias.SP), new OpImmediate(4)).pack());
+                section().putInt(LW.toInstruction(rd, new OpRegister(RegisterAlias.SP), new OpImmediate(0)).pack());
+                return true;
             }
         }
+        return false;
     }
 
-    private void nextDirective(String symbol) {
+    private void nextDirective() {
         final var directive = expectAndNext(DIRECTIVE).value().toLowerCase();
 
         switch (directive) {
             case "section" -> mSelected = expectAndNext(DIRECTIVE).value();
             case "word" -> {
-                final var word = Integer.parseInt(expectAndNext(INTEGER).value());
-                section().add(word);
+                do {
+                    final var aWord = Integer.parseInt(expectAndNext(IMMEDIATE).value());
+                    section().putInt(aWord);
+                } while (nextIfAt(","));
             }
-            case "string" -> {
+            case "half" -> {
+                do {
+                    final var aHalf = Short.parseShort(expectAndNext(IMMEDIATE).value());
+                    section().putShort(aHalf);
+                } while (nextIfAt(","));
+            }
+            case "byte" -> {
+                do {
+                    final var aByte = Byte.parseByte(expectAndNext(IMMEDIATE).value());
+                    section().putByte(aByte);
+                } while (nextIfAt(","));
+            }
+            case "string", "ascii", "asciz" -> {
                 final var str = expectAndNext(STRING).value();
 
-                final var buffer = ByteBuffer.allocateDirect(((str.length() / 4) + 1) * 4).order(ByteOrder.nativeOrder());
-                int i = 0;
-                for (; i < str.length(); i++)
-                    buffer.put((byte) str.charAt(i));
-                for (; i < buffer.capacity(); i++)
-                    buffer.put((byte) '\00');
-
-                buffer.position(0);
-                while (buffer.hasRemaining())
-                    section().add(buffer.getInt());
+                for (int i = 0; i < str.length(); i++)
+                    section().putByte((byte) str.charAt(i));
             }
             case "skip" -> {
-                final var offset = Integer.parseInt(expectAndNext(INTEGER).value());
-                for (int i = 0; i < offset; i += 4)
-                    section().add(0);
+                final var offset = Integer.parseInt(expectAndNext(IMMEDIATE).value());
+                for (int i = 0; i < offset; i++)
+                    section().putByte((byte) 0);
+            }
+            case "set" -> {
+                // TODO: set symbol to constant
+                expectAndNext(SYMBOL);
+                expectAndNext(",");
+                expectAndNext(IMMEDIATE);
             }
             default -> throw new IllegalStateException(String.format("undefined directive '%s'", directive));
         }
     }
 
-    private void nextOperand(boolean comma) {
+    private Operand nextOperand(boolean comma) {
         if (comma) expectAndNext(",");
 
         if (at(SYMBOL)) {
             final var symbol = getAndNext().value();
-            section().addUsage(symbol);
-        } else if (at(REGISTER) || at(INTEGER)) {
-            final var value = Integer.parseInt(getAndNext().value());
-            section().add(value);
-        } else
-            throw new IllegalStateException(String.format("undefined operand type '%s'", mToken));
+            return new OpSymbol(symbol);
+        }
+
+        if (at(IMMEDIATE)) {
+            final var integer = Integer.parseInt(getAndNext().value());
+            return new OpImmediate(integer);
+        }
+
+        if (at(REGISTER)) {
+            final var register = Integer.parseInt(getAndNext().value());
+            return new OpRegister(register);
+        }
+
+        throw new IllegalStateException(String.format("undefined operand type '%s'", mToken));
     }
 }

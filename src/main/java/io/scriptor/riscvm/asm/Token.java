@@ -7,9 +7,8 @@ public record Token(Type type, String value) {
         SYMBOL,
         REGISTER,
         DIRECTIVE,
-        INTEGER,
+        IMMEDIATE,
         STRING,
-        CHAR,
         OTHER,
     }
 

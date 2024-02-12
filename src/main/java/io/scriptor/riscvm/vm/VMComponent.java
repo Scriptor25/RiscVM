@@ -11,6 +11,4 @@ public abstract class VMComponent {
     public Machine getMachine() {
         return this.mMachine;
     }
-
-    public abstract void cycle();
 }
