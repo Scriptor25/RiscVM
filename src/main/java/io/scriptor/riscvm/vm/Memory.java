@@ -63,6 +63,13 @@ public class Memory extends VMComponent {
         return true;
     }
 
+    public void reset() {
+        mData.position(0);
+        while (mData.hasRemaining())
+            mData.put((byte) 0);
+        mData.clear();
+    }
+
     public ByteBuffer getBuffer() {
         return mData;
     }

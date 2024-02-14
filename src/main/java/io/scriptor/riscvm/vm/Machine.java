@@ -1,13 +1,13 @@
 package io.scriptor.riscvm.vm;
 
-import io.scriptor.riscvm.asm.LinkerConfig;
+import io.scriptor.riscvm.asm.VMConfig;
 
 public class Machine {
 
     private final Memory mMemory;
     private final CPU mCPU;
 
-    public Machine(LinkerConfig config) {
+    public Machine(VMConfig config) {
         this(config.memory());
     }
 
@@ -36,5 +36,10 @@ public class Machine {
 
     public void cycle() {
         mCPU.cycle();
+    }
+
+    public void reset() {
+        mMemory.reset();
+        mCPU.reset();
     }
 }

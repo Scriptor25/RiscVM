@@ -4,6 +4,8 @@ import io.scriptor.riscvm.ISA;
 import io.scriptor.riscvm.ISA.RegisterAlias;
 import io.scriptor.riscvm.Instruction;
 
+import java.util.Arrays;
+
 import static io.scriptor.riscvm.ISA.RegisterAlias.*;
 
 public class CPU extends VMComponent {
@@ -13,6 +15,10 @@ public class CPU extends VMComponent {
     public CPU(Machine machine) {
         super(machine);
         mRegisters = new int[32];
+    }
+
+    public int[] getRegisters() {
+        return mRegisters;
     }
 
     @Override
@@ -26,11 +32,20 @@ public class CPU extends VMComponent {
         return builder.toString();
     }
 
+    public void reset() {
+        Arrays.fill(mRegisters, 0);
+    }
+
     public void cycle() {
         final var instruction = getMachine().getMemory().getWord(nextPC());
 
         final var oc = Instruction.getOpcode(instruction);
+        if (oc < 0 || oc >= ISA.values().length)
+            throw new IllegalStateException("loaded instruction has an invalid opcode");
+
         final var instCode = ISA.values()[oc];
+        if (instCode.itype == null)
+            throw new IllegalStateException("loaded instruction has null type");
 
         final var inst = switch (instCode.itype) {
             case R -> Instruction.fromR(instruction);
@@ -103,7 +118,7 @@ public class CPU extends VMComponent {
 
             case ECALL -> ecall();
 
-            default -> throw new IllegalStateException("Unexpected value: " + inst);
+            default -> throw new IllegalStateException(String.format("unhandled instruction %s", inst));
         }
     }
 

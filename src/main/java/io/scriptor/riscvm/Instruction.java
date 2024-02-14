@@ -51,53 +51,20 @@ public class Instruction {
     @Override
     public String toString() {
         return switch (itype) {
-            case R -> String.format("%s{%s, %s, %s}", ISA.values()[opcode], rd, rs1, rs2);
-            case I -> String.format("%s{%s, %s, %s}", ISA.values()[opcode], rd, rs1, imm);
-            case S -> String.format("%s{%s, %s, %s}", ISA.values()[opcode], rs1, rs2, imm);
-            case U -> String.format("%s{%s, %s}", ISA.values()[opcode], rd, imm);
-            case E -> String.format("%s{}", ISA.values()[opcode]);
+            case R -> String.format("%5s %4s, %4s, %8s", opcode(opcode), reg(rd), reg(rs1), reg(rs2));
+            case I -> String.format("%5s %4s, %4s, %08X", opcode(opcode), reg(rd), reg(rs1), imm);
+            case S -> String.format("%5s %4s, %4s, %08X", opcode(opcode), reg(rs1), reg(rs2), imm);
+            case U -> String.format("%5s %4s, %4s  %08X", opcode(opcode), reg(rd), "", imm);
+            case E -> String.format("%5s %4s  %4s  %8s", opcode(opcode), "", "", "");
         };
     }
 
-    private String toBinString() {
-        return switch (itype) {
-            case R -> String.format("%s %s %s %s %s %s",
-                    itype,
-                    toBin(0, 10, 0),
-                    toBin(rs2, 5, 0),
-                    toBin(rs1, 5, 0),
-                    toBin(rd, 5, 0),
-                    toBin(opcode, 7, 0));
-            case I -> String.format("%s %s %s %s %s %s",
-                    itype,
-                    toBin(imm, 10, 5), toBin(imm, 5, 0),
-                    toBin(rs1, 5, 0),
-                    toBin(rd, 5, 0),
-                    toBin(opcode, 7, 0));
-            case S -> String.format("%s %s %s %s %s %s",
-                    itype,
-                    toBin(imm, 10, 5), toBin(imm, 5, 0),
-                    toBin(rs2, 5, 0),
-                    toBin(rs1, 5, 0),
-                    toBin(opcode, 7, 0));
-            case U -> String.format("%s %s %s %s %s %s",
-                    itype,
-                    toBin(imm, 10, 10), toBin(imm, 5, 5), toBin(imm, 5, 0),
-                    toBin(rd, 5, 0),
-                    toBin(opcode, 7, 0));
-            case E -> String.format("%s %s %s %s %s %s",
-                    itype,
-                    toBin(0, 10, 0),
-                    toBin(0, 5, 0),
-                    toBin(0, 5, 0),
-                    toBin(0, 5, 0),
-                    toBin(opcode, 7, 0));
-        };
+    private static ISA.RegisterAlias reg(int reg) {
+        return ISA.RegisterAlias.values()[reg];
     }
 
-    private static String toBin(int i, int n, int o) {
-        final var str = String.format("%" + n + "s", Integer.toBinaryString(i >> o)).replaceAll(" ", "0");
-        return str.substring(str.length() - n);
+    private static ISA opcode(int opcode) {
+        return ISA.values()[opcode];
     }
 
     public static int toR(int opcode, int rd, int rs1, int rs2) {
@@ -187,14 +154,19 @@ public class Instruction {
 
     public static Instruction valueOf(int inst) {
         final var opcode = getOpcode(inst);
-        if (0 < opcode && opcode < ISA.values().length)
-            return switch (ISA.values()[opcode].itype) {
-                case R -> fromR(inst);
-                case I -> fromI(inst);
-                case S -> fromS(inst);
-                case U -> fromU(inst);
-                case E -> fromE(inst);
-            };
-        return null;
+        if (opcode < 0 || opcode >= ISA.values().length)
+            return null;
+
+        final var itype = ISA.values()[opcode].itype;
+        if (itype == null)
+            return null;
+
+        return switch (itype) {
+            case R -> fromR(inst);
+            case I -> fromI(inst);
+            case S -> fromS(inst);
+            case U -> fromU(inst);
+            case E -> fromE(inst);
+        };
     }
 }

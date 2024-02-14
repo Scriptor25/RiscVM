@@ -1,31 +1,51 @@
 package io.scriptor.riscvm;
 
 import io.scriptor.riscvm.asm.Assembler;
-import io.scriptor.riscvm.asm.LinkerConfig;
+import io.scriptor.riscvm.asm.VMConfig;
 import io.scriptor.riscvm.vm.ExitSignal;
 import io.scriptor.riscvm.vm.Machine;
 
-import static io.scriptor.riscvm.Util.kb;
+import java.io.BufferedInputStream;
 
 public class RiscVM {
 
-    public static void main(String[] args) {
-        final var config = new LinkerConfig(kb(16), "text", "rodata", "data", "bss");
+    private final VMConfig mConfig;
+    private final Machine mMachine;
 
-        final var machine = new Machine(config);
-        final var mem = machine.getMemory();
+    public RiscVM(VMConfig config) {
+        mConfig = config;
+        mMachine = new Machine(config);
+    }
 
-        final var asm = new Assembler(ClassLoader.getSystemResourceAsStream("fib.s"), config, mem.getBuffer());
-        //System.out.println(asm);
-        //System.out.println(mem);
+    public Machine getMachine() {
+        return mMachine;
+    }
 
-        while (true) {
-            try {
-                machine.cycle();
-            } catch (ExitSignal e) {
-                System.out.println(e.getMessage());
-                break;
-            }
+    public void resetCPU() {
+        mMachine.getCPU().reset();
+    }
+
+    public void resetMemory() {
+        mMachine.getMemory().reset();
+    }
+
+    public void reset() {
+        mMachine.reset();
+    }
+
+    public void assemble(BufferedInputStream stream) {
+        Assembler.assemble(stream, mConfig, mMachine.getMemory().getBuffer());
+    }
+
+    public boolean step() {
+        try {
+            mMachine.cycle();
+            return true;
+        } catch (ExitSignal e) {
+            System.out.println(e.getMessage());
+        } catch (Throwable t) {
+            System.err.println(t);
         }
+        return false;
     }
 }

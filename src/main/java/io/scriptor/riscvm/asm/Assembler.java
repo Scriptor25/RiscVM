@@ -17,66 +17,29 @@ import static io.scriptor.riscvm.asm.Token.Type.*;
 
 public class Assembler {
 
-    private static boolean isDigit(int c) {
-        return (0x30 <= c && c <= 0x39);
-    }
+    public static void assemble(InputStream stream, VMConfig config, ByteBuffer buffer) {
+        final var asm = new Assembler(stream, buffer.capacity());
 
-    private static boolean isXDigit(int c) {
-        return isDigit(c) || (0x41 <= c && c <= 0x46) || (0x61 <= c && c <= 0x66);
-    }
-
-    private static boolean isAlpha(int c) {
-        return (0x41 <= c && c <= 0x5A) || (0x61 <= c && c <= 0x7A);
-    }
-
-    private static boolean isAlNum(int c) {
-        return isDigit(c) || isAlpha(c);
-    }
-
-    private final InputStream mStream;
-    private Token mToken;
-
-    public final Map<String, Symbol> mSymbolTable = new HashMap<>();
-    private final Map<String, Section> mSections = new HashMap<>();
-    private final List<Section> mOrder = new Vector<>();
-    private String mSelected = "";
-    private final int mMemorySize;
-
-    public Assembler(InputStream stream, LinkerConfig config, ByteBuffer buffer) {
-        mStream = stream;
-        mMemorySize = buffer.capacity();
-
-        next();
+        asm.next();
         do {
-            nextLine();
-        } while (notEOF());
-        handle(mStream::close);
+            asm.nextLine();
+        } while (asm.notEOF());
 
         for (final var name : config.sections()) {
-            final var section = mSections.computeIfAbsent(name, key -> new Section(key, mMemorySize));
-            mOrder.add(section);
+            final var section = asm.mSections.computeIfAbsent(name, key -> new Section(key, asm.mMemorySize));
+            asm.mSectionsOrder.add(section);
         }
 
-        for (final var section : mSections.values())
-            if (!mOrder.contains(section))
-                mOrder.add(section);
+        for (final var section : asm.mSections.values())
+            if (!asm.mSectionsOrder.contains(section))
+                asm.mSectionsOrder.add(section);
 
-        for (final var section : mOrder)
-            insertSection(buffer, section);
+        for (final var section : asm.mSectionsOrder)
+            insertSection(buffer, section, asm.mSymbolTable, asm.mSectionsOrder);
     }
 
-    private int offsetOf(Section section) {
-        int offset = 0;
-        for (final var s : mOrder) {
-            if (s == section)
-                return offset;
-            offset += s.counter();
-        }
-        return offset;
-    }
-
-    private void insertSection(ByteBuffer buffer, Section section) {
-        int start = offsetOf(section);
+    private static void insertSection(ByteBuffer buffer, Section section, Map<String, Symbol> symbolTable, List<Section> sectionsOrder) {
+        int start = offsetOf(sectionsOrder, section);
 
         buffer.position(start);
         section.put(buffer);
@@ -85,11 +48,11 @@ public class Assembler {
             final var symbol = entry.getKey();
             final var offsets = entry.getValue();
 
-            if (!mSymbolTable.containsKey(symbol))
+            if (!symbolTable.containsKey(symbol))
                 throw new IllegalStateException(String.format("undefined symbol '%s'", symbol));
 
-            final var sym = mSymbolTable.get(symbol);
-            final var location = sym.offset() + offsetOf(sym.section());
+            final var sym = symbolTable.get(symbol);
+            final var location = sym.value() + offsetOf(sectionsOrder, sym.section());
 
             for (final var o : offsets) {
                 final var inst = buffer.getInt(start + o);
@@ -114,6 +77,46 @@ public class Assembler {
         }
     }
 
+    private static int offsetOf(List<Section> sectionsOrder, Section section) {
+        int offset = 0;
+        for (final var s : sectionsOrder) {
+            if (s == section)
+                return offset;
+            offset += s.counter();
+        }
+        return offset;
+    }
+
+    private static boolean isDigit(int c) {
+        return (0x30 <= c && c <= 0x39);
+    }
+
+    private static boolean isXDigit(int c) {
+        return isDigit(c) || (0x41 <= c && c <= 0x46) || (0x61 <= c && c <= 0x66);
+    }
+
+    private static boolean isAlpha(int c) {
+        return (0x41 <= c && c <= 0x5A) || (0x61 <= c && c <= 0x7A);
+    }
+
+    private static boolean isAlNum(int c) {
+        return isDigit(c) || isAlpha(c);
+    }
+
+    private final InputStream mStream;
+    private final int mMemorySize;
+    private Token mToken;
+
+    public final Map<String, Symbol> mSymbolTable = new HashMap<>();
+    private final Map<String, Section> mSections = new HashMap<>();
+    private final List<Section> mSectionsOrder = new Vector<>();
+    private String mSelected = "";
+
+    private Assembler(InputStream stream, int memorySize) {
+        mStream = stream;
+        mMemorySize = memorySize;
+    }
+
     @Override
     public String toString() {
         final var builder = new StringBuilder();
@@ -123,14 +126,10 @@ public class Assembler {
 
         builder.append("---------- Symbols ----------\n");
         for (final var entry : mSymbolTable.entrySet())
-            builder.append(entry.getKey()).append(": ").append(entry.getValue().section().name).append("+").append(String.format("%08X", entry.getValue().offset())).append('\n');
+            builder.append(entry.getKey()).append(": ").append(entry.getValue().section().name).append("+").append(String.format("%08X", entry.getValue().value())).append('\n');
         builder.append("-----------------------------");
 
         return builder.toString();
-    }
-
-    private Section section() {
-        return mSections.computeIfAbsent(mSelected, key -> new Section(key, mMemorySize));
     }
 
     private int read() {
@@ -314,7 +313,7 @@ public class Assembler {
     }
 
     private void nextLine() {
-        String symbol = null;
+        String symbol;
         if (at(SYMBOL)) {
             symbol = getAndNext().value();
             if (nextIfAt(":"))
@@ -327,6 +326,10 @@ public class Assembler {
 
         if (at(DIRECTIVE)) nextDirective();
         else nextInstruction(expectAndNext(SYMBOL).value());
+    }
+
+    private Section section() {
+        return mSections.computeIfAbsent(mSelected, key -> new Section(key, mMemorySize));
     }
 
     private void nextSymbol(String symbol) {
@@ -402,18 +405,7 @@ public class Assembler {
                 section().putInt(JALR.toInstruction(new OpRegister(RegisterAlias.ZERO), new OpRegister(RegisterAlias.RA), new OpImmediate(0)).pack());
                 return true;
             }
-            case SEQZ -> {
-                throw new IllegalStateException();
-            }
-            case SNEZ -> {
-                throw new IllegalStateException();
-            }
-            case SLTZ -> {
-                throw new IllegalStateException();
-            }
-            case SGTZ -> {
-                throw new IllegalStateException();
-            }
+            case SEQZ, SNEZ, SLTZ, SGTZ -> throw new IllegalStateException();
             case NOP -> {
                 section().putInt(ADDI.toInstruction(new OpRegister(RegisterAlias.ZERO), new OpRegister(RegisterAlias.ZERO), new OpImmediate(0)).pack());
                 return true;
@@ -469,10 +461,10 @@ public class Assembler {
                     section().putByte((byte) 0);
             }
             case "set" -> {
-                // TODO: set symbol to constant
-                expectAndNext(SYMBOL);
+                final var symbol = expectAndNext(SYMBOL).value();
                 expectAndNext(",");
-                expectAndNext(IMMEDIATE);
+                final var value = Integer.parseInt(expectAndNext(IMMEDIATE).value());
+                mSymbolTable.computeIfAbsent(symbol, key -> new Symbol(section(), 0)).value(value);
             }
             default -> throw new IllegalStateException(String.format("undefined directive '%s'", directive));
         }
