@@ -10,6 +10,8 @@ _start:
 	li a7, 93
 	li a0, 123
 	ecall
+    
+    j _start
 
 .section .rodata
 helloworld:

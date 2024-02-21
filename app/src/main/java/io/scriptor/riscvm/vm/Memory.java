@@ -19,13 +19,12 @@ public class Memory extends VMComponent {
 
     @Override
     public String toString() {
-        final var builder = new StringBuilder()
-                .append("Size: ").append(Util.unit(mData.capacity()));
+        final var builder =
+                new StringBuilder().append("Size: ").append(Util.unit(mData.capacity()));
 
         for (int i = 0; i < mData.capacity(); i += N) {
             builder.append(String.format("%n%08X: ", i));
-            for (int j = 0; j < N; j++)
-                builder.append(String.format("%02X ", mData.get(i + j)));
+            for (int j = 0; j < N; j++) builder.append(String.format("%02X ", mData.get(i + j)));
 
             builder.append('|');
             for (int j = 0; j < N; j++) {
@@ -42,8 +41,7 @@ public class Memory extends VMComponent {
             builder.append('|');
 
             int same = 0;
-            while (checkSegments(i, i + (1 + same) * N))
-                same++;
+            while (checkSegments(i, i + (1 + same) * N)) same++;
 
             if (same > 0) {
                 i += same * N;
@@ -55,23 +53,27 @@ public class Memory extends VMComponent {
     }
 
     private boolean checkSegments(int segment0, int segment1) {
-        if (segment0 < 0 || segment1 < 0 || segment0 + N - 1 >= mData.capacity() || segment1 + N - 1 >= mData.capacity())
-            return false;
+        if (segment0 < 0
+                || segment1 < 0
+                || segment0 + N - 1 >= mData.capacity()
+                || segment1 + N - 1 >= mData.capacity()) return false;
         for (int i = 0; i < N; i++)
-            if (mData.get(segment0 + i) != mData.get(segment1 + i))
-                return false;
+            if (mData.get(segment0 + i) != mData.get(segment1 + i)) return false;
         return true;
     }
 
     public void reset() {
         mData.position(0);
-        while (mData.hasRemaining())
-            mData.put((byte) 0);
+        while (mData.hasRemaining()) mData.put((byte) 0);
         mData.clear();
     }
 
     public ByteBuffer getBuffer() {
         return mData;
+    }
+
+    public int getSize() {
+        return mData.capacity();
     }
 
     public void setByte(int address, byte data) {
@@ -98,12 +100,15 @@ public class Memory extends VMComponent {
         return mData.getInt(address);
     }
 
+    public long getDWord(int address) {
+        return mData.getLong(address);
+    }
+
     public String getASCII(int address, int count) {
         final var builder = new StringBuilder();
 
         mData.position(address);
-        for (int i = 0; i < count; i++)
-            builder.append((char) mData.get());
+        for (int i = 0; i < count; i++) builder.append((char) mData.get());
 
         return builder.toString();
     }

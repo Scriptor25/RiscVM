@@ -1,36 +1,38 @@
 .section .stack
 .skip 0x1000
-STACKSTART: .word 'A'
+stack: .word 0
 
 .section .text
-START:
-	la sp, STACKSTART
+_start:
+	la sp, stack
 	
 	li a0, 10
-	jr FIB
+	jr fib
 	
 	# exit with result code
 	li a7, 93
 	ecall
+    
+    j _start
 
-FIB:
+fib:
 	push ra
 	push s0
 	push s1
 	
-	beqz a0, RET0
+	beqz a0, ret0
 	li t0, 1
-	beq a0, t0, RET1
+	beq a0, t0, ret1
 	
 	subi s0, a0, 1
 	subi s1, a0, 2
 	
 	mv a0, s0
-	jr FIB
+	jr fib
 	mv s0, a0
 	
 	mv a0, s1
-	jr FIB
+	jr fib
 	mv s1, a0
 	
 	add a0, s0, s1
@@ -40,7 +42,7 @@ FIB:
 	pop ra
 	
 	ret
-RET0:
+ret0:
 	li a0, 0
 	
 	pop s1
@@ -48,7 +50,7 @@ RET0:
 	pop ra
 	
 	ret
-RET1:
+ret1:
 	li a0, 1
 	
 	pop s1
