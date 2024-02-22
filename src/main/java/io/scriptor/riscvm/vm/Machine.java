@@ -1,7 +1,5 @@
 package io.scriptor.riscvm.vm;
 
-import io.scriptor.riscvm.asm.VMConfig;
-
 public class Machine {
 
     private final Memory mMemory;

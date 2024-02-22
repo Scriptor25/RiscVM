@@ -1,7 +1,7 @@
 package io.scriptor.riscvm.asm;
 
-import io.scriptor.riscvm.ISA;
-import io.scriptor.riscvm.Instruction;
+import io.scriptor.riscvm.core.*;
+import io.scriptor.riscvm.vm.VMConfig;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -10,9 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
-import static io.scriptor.riscvm.ISA.*;
-import static io.scriptor.riscvm.Util.handle;
-import static io.scriptor.riscvm.Util.handleT;
+import static io.scriptor.riscvm.core.Util.handle;
+import static io.scriptor.riscvm.core.Util.handleT;
 import static io.scriptor.riscvm.asm.Token.Type.*;
 
 public class Assembler {
@@ -360,66 +359,66 @@ public class Assembler {
             case LI -> {
                 final var rd = nextOperand(false);
                 final var imm = nextOperand(true);
-                section().putInt(ADDI.toInstruction(rd, new OpRegister(RegisterAlias.ZERO), imm).pack());
+                section().putInt(ISA.ADDI.toInstruction(rd, new OpRegister(ISA.RegisterAlias.ZERO), imm).pack());
                 return true;
             }
             case LA -> {
                 final var rd = nextOperand(false);
                 final var sym = nextOperand(true);
                 section().use(sym.asSym());
-                section().putInt(ADDI.toInstruction(rd, new OpRegister(RegisterAlias.ZERO), new OpImmediate(0)).pack());
+                section().putInt(ISA.ADDI.toInstruction(rd, new OpRegister(ISA.RegisterAlias.ZERO), new OpImmediate(0)).pack());
                 return true;
             }
             case MV -> {
                 final var rd = nextOperand(false);
                 final var rs1 = nextOperand(true);
-                section().putInt(ADDI.toInstruction(rd, rs1, new OpImmediate(0)).pack());
+                section().putInt(ISA.ADDI.toInstruction(rd, rs1, new OpImmediate(0)).pack());
                 return true;
             }
             case BEQZ -> {
                 final var rs1 = nextOperand(false);
                 final var sym = nextOperand(true);
                 section().use(sym.asSym());
-                section().putInt(BEQ.toInstruction(rs1, new OpRegister(RegisterAlias.ZERO), new OpImmediate(0)).pack());
+                section().putInt(ISA.BEQ.toInstruction(rs1, new OpRegister(ISA.RegisterAlias.ZERO), new OpImmediate(0)).pack());
                 return true;
             }
             case BNEZ -> {
                 final var rs1 = nextOperand(false);
                 final var imm = nextOperand(true);
-                section().putInt(BNE.toInstruction(rs1, new OpRegister(RegisterAlias.ZERO), imm).pack());
+                section().putInt(ISA.BNE.toInstruction(rs1, new OpRegister(ISA.RegisterAlias.ZERO), imm).pack());
                 return true;
             }
             case JR -> {
                 final var sym = nextOperand(false);
                 section().use(sym.asSym());
-                section().putInt(JAL.toInstruction(new OpRegister(RegisterAlias.RA), new OpImmediate(0)).pack());
+                section().putInt(ISA.JAL.toInstruction(new OpRegister(ISA.RegisterAlias.RA), new OpImmediate(0)).pack());
                 return true;
             }
             case J -> {
                 final var sym = nextOperand(false);
                 section().use(sym.asSym());
-                section().putInt(JAL.toInstruction(new OpRegister(RegisterAlias.ZERO), new OpImmediate(0)).pack());
+                section().putInt(ISA.JAL.toInstruction(new OpRegister(ISA.RegisterAlias.ZERO), new OpImmediate(0)).pack());
                 return true;
             }
             case RET -> {
-                section().putInt(JALR.toInstruction(new OpRegister(RegisterAlias.ZERO), new OpRegister(RegisterAlias.RA), new OpImmediate(0)).pack());
+                section().putInt(ISA.JALR.toInstruction(new OpRegister(ISA.RegisterAlias.ZERO), new OpRegister(ISA.RegisterAlias.RA), new OpImmediate(0)).pack());
                 return true;
             }
             case SEQZ, SNEZ, SLTZ, SGTZ -> throw new IllegalStateException();
             case NOP -> {
-                section().putInt(ADDI.toInstruction(new OpRegister(RegisterAlias.ZERO), new OpRegister(RegisterAlias.ZERO), new OpImmediate(0)).pack());
+                section().putInt(ISA.ADDI.toInstruction(new OpRegister(ISA.RegisterAlias.ZERO), new OpRegister(ISA.RegisterAlias.ZERO), new OpImmediate(0)).pack());
                 return true;
             }
             case PUSH -> {
                 final var rs1 = nextOperand(false);
-                section().putInt(SW.toInstruction(rs1, new OpRegister(RegisterAlias.SP), new OpImmediate(0)).pack());
-                section().putInt(SUBI.toInstruction(new OpRegister(RegisterAlias.SP), new OpRegister(RegisterAlias.SP), new OpImmediate(4)).pack());
+                section().putInt(ISA.SW.toInstruction(rs1, new OpRegister(ISA.RegisterAlias.SP), new OpImmediate(0)).pack());
+                section().putInt(ISA.SUBI.toInstruction(new OpRegister(ISA.RegisterAlias.SP), new OpRegister(ISA.RegisterAlias.SP), new OpImmediate(4)).pack());
                 return true;
             }
             case POP -> {
                 final var rd = nextOperand(false);
-                section().putInt(ADDI.toInstruction(new OpRegister(RegisterAlias.SP), new OpRegister(RegisterAlias.SP), new OpImmediate(4)).pack());
-                section().putInt(LW.toInstruction(rd, new OpRegister(RegisterAlias.SP), new OpImmediate(0)).pack());
+                section().putInt(ISA.ADDI.toInstruction(new OpRegister(ISA.RegisterAlias.SP), new OpRegister(ISA.RegisterAlias.SP), new OpImmediate(4)).pack());
+                section().putInt(ISA.LW.toInstruction(rd, new OpRegister(ISA.RegisterAlias.SP), new OpImmediate(0)).pack());
                 return true;
             }
         }

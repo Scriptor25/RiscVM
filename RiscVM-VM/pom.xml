@@ -3,30 +3,18 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.scriptor</groupId>
+        <artifactId>riscvm</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
 
-    <groupId>io.scriptor</groupId>
-    <artifactId>riscvm</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <packaging>pom</packaging>
-    <modules>
-        <module>RiscVM-App</module>
-        <module>RiscVM-VM</module>
-    </modules>
+    <artifactId>riscvm-vm</artifactId>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-        <imgui.java.version>1.86.11</imgui.java.version>
     </properties>
-
-    <dependencies>
-        <dependency>
-            <groupId>io.github.spair</groupId>
-            <artifactId>imgui-java-app</artifactId>
-            <version>${imgui.java.version}</version>
-        </dependency>
-    </dependencies>
 
 </project>

@@ -1,4 +1,4 @@
-package io.scriptor.riscvm.asm;
+package io.scriptor.riscvm.core;
 
 public class OpImmediate extends Operand {
 

@@ -1,10 +1,10 @@
-package io.scriptor.riscvm;
+package io.scriptor.riscvm.app;
 
-import io.scriptor.riscvm.app.RiscApp;
-import io.scriptor.riscvm.asm.VMConfig;
+import io.scriptor.riscvm.vm.RiscVM;
+import io.scriptor.riscvm.vm.VMConfig;
 
 import static imgui.app.Application.launch;
-import static io.scriptor.riscvm.Util.kb;
+import static io.scriptor.riscvm.core.Util.kb;
 
 public class Main {
 

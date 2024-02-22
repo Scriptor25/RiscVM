@@ -1,7 +1,7 @@
 package io.scriptor.riscvm.vm;
 
-import io.scriptor.riscvm.Instruction;
-import io.scriptor.riscvm.Util;
+import io.scriptor.riscvm.core.Instruction;
+import io.scriptor.riscvm.core.Util;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

@@ -1,9 +1,6 @@
-package io.scriptor.riscvm;
+package io.scriptor.riscvm.vm;
 
 import io.scriptor.riscvm.asm.Assembler;
-import io.scriptor.riscvm.asm.VMConfig;
-import io.scriptor.riscvm.vm.ExitSignal;
-import io.scriptor.riscvm.vm.Machine;
 
 import java.io.BufferedInputStream;
 

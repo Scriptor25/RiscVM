@@ -1,10 +1,8 @@
-package io.scriptor.riscvm;
+package io.scriptor.riscvm.core;
 
-import io.scriptor.riscvm.asm.Operand;
-
-import static io.scriptor.riscvm.ISA.OperandType.IMMEDIATE;
-import static io.scriptor.riscvm.ISA.OperandType.REGISTER;
-import static io.scriptor.riscvm.Instruction.IType.*;
+import static io.scriptor.riscvm.core.ISA.OperandType.IMMEDIATE;
+import static io.scriptor.riscvm.core.ISA.OperandType.REGISTER;
+import static io.scriptor.riscvm.core.Instruction.IType.*;
 
 // https://marks.page/riscv/
 // https://riscv-programming.org/book/riscv-book.html

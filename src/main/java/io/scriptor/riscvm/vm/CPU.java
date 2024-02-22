@@ -1,12 +1,9 @@
 package io.scriptor.riscvm.vm;
 
-import io.scriptor.riscvm.ISA;
-import io.scriptor.riscvm.ISA.RegisterAlias;
-import io.scriptor.riscvm.Instruction;
+import io.scriptor.riscvm.core.ISA;
+import io.scriptor.riscvm.core.Instruction;
 
 import java.util.Arrays;
-
-import static io.scriptor.riscvm.ISA.RegisterAlias.*;
 
 public class CPU extends VMComponent {
 
@@ -90,27 +87,27 @@ public class CPU extends VMComponent {
 
             case BEQ -> {
                 if (get(rs1) == get(rs2))
-                    set(PC, imm);
+                    set(ISA.RegisterAlias.PC, imm);
             }
             case BNE -> {
                 if (get(rs1) != get(rs2))
-                    set(PC, imm);
+                    set(ISA.RegisterAlias.PC, imm);
             }
             case BLT -> {
                 if (get(rs1) < get(rs2))
-                    set(PC, imm);
+                    set(ISA.RegisterAlias.PC, imm);
             }
             case BGE -> {
                 if (get(rs1) >= get(rs2))
-                    set(PC, imm);
+                    set(ISA.RegisterAlias.PC, imm);
             }
             case JAL -> {
-                set(rd, get(PC));
-                set(PC, imm);
+                set(rd, get(ISA.RegisterAlias.PC));
+                set(ISA.RegisterAlias.PC, imm);
             }
             case JALR -> {
-                set(rd, get(PC));
-                set(PC, get(rs1) + imm);
+                set(rd, get(ISA.RegisterAlias.PC));
+                set(ISA.RegisterAlias.PC, get(rs1) + imm);
             }
 
             case SLT -> set(rd, get(rs1) < get(rs2) ? 1 : 0);
@@ -122,8 +119,8 @@ public class CPU extends VMComponent {
         }
     }
 
-    public void set(RegisterAlias a, int word) {
-        if (a == ZERO) return; // Zero hardwired to NULL
+    public void set(ISA.RegisterAlias a, int word) {
+        if (a == ISA.RegisterAlias.ZERO) return; // Zero hardwired to NULL
         this.mRegisters[a.ordinal() - 1] = word;
     }
 
@@ -132,14 +129,14 @@ public class CPU extends VMComponent {
         this.mRegisters[i - 1] = word;
     }
 
-    public int get(RegisterAlias a, int offset) {
-        a = RegisterAlias.values()[a.ordinal() + offset];
-        if (a == ZERO) return 0; // Zero hardwired to NULL
+    public int get(ISA.RegisterAlias a, int offset) {
+        a = ISA.RegisterAlias.values()[a.ordinal() + offset];
+        if (a == ISA.RegisterAlias.ZERO) return 0; // Zero hardwired to NULL
         return this.mRegisters[a.ordinal() - 1];
     }
 
-    public int get(RegisterAlias a) {
-        if (a == ZERO) return 0; // Zero hardwired to NULL
+    public int get(ISA.RegisterAlias a) {
+        if (a == ISA.RegisterAlias.ZERO) return 0; // Zero hardwired to NULL
         return this.mRegisters[a.ordinal() - 1];
     }
 
@@ -149,13 +146,13 @@ public class CPU extends VMComponent {
     }
 
     private int nextPC() {
-        final var pc = get(PC);
-        set(PC, pc + 4);
+        final var pc = get(ISA.RegisterAlias.PC);
+        set(ISA.RegisterAlias.PC, pc + 4);
         return pc;
     }
 
     private void ecall() {
-        switch (get(A7)) {
+        switch (get(ISA.RegisterAlias.A7)) {
 
             /*
               write:
@@ -164,9 +161,9 @@ public class CPU extends VMComponent {
                a2: count
              */
             case 64 -> {
-                final var fd = get(A0);
-                final var buf = get(A1);
-                final var count = get(A2);
+                final var fd = get(ISA.RegisterAlias.A0);
+                final var buf = get(ISA.RegisterAlias.A1);
+                final var count = get(ISA.RegisterAlias.A2);
 
                 final var ascii = getMachine().getMemory().getASCII(buf, count);
 
@@ -183,7 +180,7 @@ public class CPU extends VMComponent {
              *  a0: code
              */
             case 93 -> {
-                throw new ExitSignal(get(A0));
+                throw new ExitSignal(get(ISA.RegisterAlias.A0));
             }
         }
     }

@@ -6,9 +6,9 @@ import imgui.app.Configuration;
 import imgui.flag.ImGuiConfigFlags;
 import imgui.flag.ImGuiTableFlags;
 import imgui.type.ImString;
-import io.scriptor.riscvm.ISA;
-import io.scriptor.riscvm.Instruction;
-import io.scriptor.riscvm.RiscVM;
+import io.scriptor.riscvm.core.ISA;
+import io.scriptor.riscvm.core.Instruction;
+import io.scriptor.riscvm.vm.RiscVM;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -17,7 +17,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
-import static io.scriptor.riscvm.Util.handleT;
+import static io.scriptor.riscvm.core.Util.handleT;
 import static org.lwjgl.glfw.GLFW.*;
 
 public class RiscApp extends Application {

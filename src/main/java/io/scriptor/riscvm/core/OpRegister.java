@@ -1,6 +1,4 @@
-package io.scriptor.riscvm.asm;
-
-import io.scriptor.riscvm.ISA;
+package io.scriptor.riscvm.core;
 
 public class OpRegister extends Operand {
 
