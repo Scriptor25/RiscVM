@@ -1,7 +1,6 @@
 package io.scriptor.riscvm.asm;
 
 import io.scriptor.riscvm.core.*;
-import io.scriptor.riscvm.vm.VMConfig;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -16,7 +15,7 @@ import static io.scriptor.riscvm.asm.Token.Type.*;
 
 public class Assembler {
 
-    public static void assemble(InputStream stream, VMConfig config, ByteBuffer buffer) {
+    public static void assemble(InputStream stream, ByteBuffer buffer, String... sections) {
         final var asm = new Assembler(stream, buffer.capacity());
 
         asm.next();
@@ -24,7 +23,7 @@ public class Assembler {
             asm.nextLine();
         } while (asm.notEOF());
 
-        for (final var name : config.sections()) {
+        for (final var name : sections) {
             final var section = asm.mSections.computeIfAbsent(name, key -> new Section(key, asm.mMemorySize));
             asm.mSectionsOrder.add(section);
         }

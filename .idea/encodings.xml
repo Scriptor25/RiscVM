@@ -3,6 +3,10 @@
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/RiscVM-App/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/RiscVM-App/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/RiscVM-Asm/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/RiscVM-Asm/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/RiscVM-Core/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/RiscVM-Core/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/RiscVM-VM/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/RiscVM-VM/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />

@@ -31,7 +31,7 @@ public class RiscVM {
     }
 
     public void assemble(BufferedInputStream stream) {
-        Assembler.assemble(stream, mConfig, mMachine.getMemory().getBuffer());
+        Assembler.assemble(stream, mMachine.getMemory().getBuffer(), mConfig.sections());
     }
 
     public boolean step() {
