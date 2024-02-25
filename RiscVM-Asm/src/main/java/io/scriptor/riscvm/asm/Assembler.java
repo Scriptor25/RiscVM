@@ -131,7 +131,7 @@ public class Assembler {
     }
 
     private int read() {
-        return handleT(mStream::read);
+        return handleT(mStream::read).orElse(-1);
     }
 
     private void mark() {
@@ -336,7 +336,6 @@ public class Assembler {
 
     private void nextInstruction(String symbol) {
         final var inst = ISA.valueOf(symbol.toUpperCase());
-
         if (nextPseudoInstruction(inst))
             return;
 

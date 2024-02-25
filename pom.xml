@@ -5,14 +5,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.scriptor</groupId>
-    <artifactId>riscvm</artifactId>
+    <artifactId>riscvm-core</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
+
     <modules>
         <module>RiscVM-App</module>
-        <module>RiscVM-VM</module>
-        <module>RiscVM-Core</module>
         <module>RiscVM-Asm</module>
+        <module>RiscVM-VM</module>
     </modules>
 
     <properties>

@@ -1,5 +1,7 @@
 package io.scriptor.riscvm.core;
 
+import java.util.Optional;
+
 public class Util {
 
     public static int kb(int n) {
@@ -30,15 +32,18 @@ public class Util {
         try {
             handler.run();
         } catch (Throwable t) {
-            throw new RuntimeException(t);
+            // throw new RuntimeException(t);
+            System.err.println(t);
         }
     }
 
-    public static <T> T handleT(IErrorHandlerT<T> handler) {
+    public static <T> Optional<T> handleT(IErrorHandlerT<T> handler) {
         try {
-            return handler.run();
+            return Optional.of(handler.run());
         } catch (Throwable t) {
-            throw new RuntimeException(t);
+            // throw new RuntimeException(t);
+            System.err.println(t);
+            return Optional.empty();
         }
     }
 }

@@ -4,4 +4,5 @@ module riscvm.app {
     requires imgui.app;
     requires imgui.binding;
     requires org.lwjgl.glfw;
+    requires org.lwjgl.opengl;
 }
