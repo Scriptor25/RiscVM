@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
+import static io.scriptor.riscvm.asm.Token.Type.*;
 import static io.scriptor.riscvm.core.Util.handle;
 import static io.scriptor.riscvm.core.Util.handleT;
-import static io.scriptor.riscvm.asm.Token.Type.*;
 
 public class Assembler {
 
