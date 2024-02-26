@@ -1,12 +1,12 @@
 package io.scriptor.riscvm;
 
-import android.view.View;
-import static io.scriptor.riscvm.Util.kb;
+import static io.scriptor.riscvm.core.Util.kb;
 
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
 
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
@@ -14,8 +14,9 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
-import io.scriptor.riscvm.asm.VMConfig;
 import io.scriptor.riscvm.databinding.ActivityMainBinding;
+import io.scriptor.riscvm.vm.RiscVM;
+import io.scriptor.riscvm.vm.VMConfig;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;

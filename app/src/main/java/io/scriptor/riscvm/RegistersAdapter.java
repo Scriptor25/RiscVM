@@ -7,6 +7,9 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
 
+import io.scriptor.riscvm.core.ISA;
+import io.scriptor.riscvm.vm.RiscVM;
+
 public class RegistersAdapter extends BaseAdapter {
 
     private final Context mContext;
