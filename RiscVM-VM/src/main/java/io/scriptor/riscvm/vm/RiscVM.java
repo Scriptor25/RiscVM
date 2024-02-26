@@ -43,7 +43,7 @@ public class RiscVM {
         } catch (BreakPoint b) {
             System.out.println("Reached Break Point");
         } catch (Throwable t) {
-            System.err.println(t.getMessage());
+            t.printStackTrace(System.err);
         }
         return false;
     }
