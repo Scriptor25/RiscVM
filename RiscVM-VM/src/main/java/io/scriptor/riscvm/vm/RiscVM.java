@@ -40,8 +40,10 @@ public class RiscVM {
             return true;
         } catch (ExitSignal e) {
             System.out.println(e.getMessage());
+        } catch (BreakPoint b) {
+            System.out.println("Reached Break Point");
         } catch (Throwable t) {
-            System.err.println(t);
+            System.err.println(t.getMessage());
         }
         return false;
     }

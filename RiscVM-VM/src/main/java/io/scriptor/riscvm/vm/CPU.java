@@ -114,6 +114,7 @@ public class CPU extends VMComponent {
             case SLTI -> set(rd, get(rs1) < imm ? 1 : 0);
 
             case ECALL -> ecall();
+            case EBREAK -> ebreak();
 
             default -> throw new IllegalStateException(String.format("unhandled instruction %s", inst));
         }
@@ -183,5 +184,9 @@ public class CPU extends VMComponent {
                 throw new ExitSignal(get(ISA.RegisterAlias.A0));
             }
         }
+    }
+
+    private void ebreak() {
+        throw new BreakPoint();
     }
 }
