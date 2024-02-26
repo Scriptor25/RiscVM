@@ -14,22 +14,12 @@ public class Machine {
         this.mCPU = new CPU(this);
     }
 
-    @Override
-    public String toString() {
-        return new StringBuilder()
-                .append("----------- Memory ----------\n")
-                .append(mMemory).append('\n')
-                .append("------------ CPU ------------\n")
-                .append(mCPU)
-                .toString();
-    }
-
     public Memory getMemory() {
-        return this.mMemory;
+        return mMemory;
     }
 
     public CPU getCPU() {
-        return this.mCPU;
+        return mCPU;
     }
 
     public void cycle() {

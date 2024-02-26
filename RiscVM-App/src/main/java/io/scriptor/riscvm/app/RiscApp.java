@@ -4,7 +4,6 @@ import imgui.ImGui;
 import imgui.app.Application;
 import imgui.app.Configuration;
 import imgui.flag.ImGuiConfigFlags;
-import io.scriptor.riscvm.core.ISA;
 import io.scriptor.riscvm.vm.RiscVM;
 
 import java.io.BufferedInputStream;
@@ -67,7 +66,7 @@ public class RiscApp extends Application {
 
         mMainMenuBar.show();
         mFileBrowser.show();
-        mMemoryView.show(mVM.getMachine().getCPU().get(ISA.RegisterAlias.PC));
+        mMemoryView.show(mVM.getMachine().getCPU().programCounter());
         mCPUView.show();
 
         if (mRun && !mVM.step()) mRun = false;

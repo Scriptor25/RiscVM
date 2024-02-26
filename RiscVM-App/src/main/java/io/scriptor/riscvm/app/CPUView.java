@@ -32,7 +32,7 @@ public class CPUView {
                     ImGui.text(String.format("%d", mRegisters[i]));
 
                     ImGui.tableNextColumn();
-                    ImGui.text(String.format("%c", mRegisters[i]));
+                    ImGui.text(String.format("%c", (char) mRegisters[i]));
 
                     ImGui.tableNextColumn();
                 }
