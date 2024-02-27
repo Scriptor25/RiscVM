@@ -9,6 +9,7 @@ import io.scriptor.riscvm.vm.RiscVM;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
+import java.io.PrintStream;
 
 import static io.scriptor.riscvm.core.Util.handle;
 import static io.scriptor.riscvm.core.Util.handleT;
@@ -24,12 +25,15 @@ public class RiscApp extends Application {
     private final FileBrowser mFileBrowser = new FileBrowser();
     private final MemoryView mMemoryView;
     private final CPUView mCPUView;
+    private final OutputView mOutputView = new OutputView();
 
     public RiscApp(RiscVM vm) {
         super();
         mVM = vm;
         mMemoryView = new MemoryView(vm.getMachine().getMemory().getBuffer());
         mCPUView = new CPUView(vm.getMachine().getCPU().getRegisters());
+
+        System.setOut(new PrintStream(mOutputView.getStream()));
     }
 
     @Override
@@ -69,6 +73,7 @@ public class RiscApp extends Application {
         mFileBrowser.show();
         mMemoryView.show(mVM.getMachine().getCPU().get(ISA.RegisterAlias.PC));
         mCPUView.show();
+        mOutputView.show();
 
         if (mRun && !mVM.step()) mRun = false;
         if (mReset) {
