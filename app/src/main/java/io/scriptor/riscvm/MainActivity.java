@@ -134,7 +134,6 @@ public class MainActivity extends AppCompatActivity {
                 };
         final var print = new PrintStream(stream, true);
         System.setOut(print);
-        System.setErr(print);
     }
 
     @Override
